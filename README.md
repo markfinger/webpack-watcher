@@ -31,7 +31,7 @@ var webpackWatcher = new WebpackWatcher(compiler, {
 	onDone: function(stats) {
 		// Called every time the bundle has been generated
 	},
-	onError: function(error) {
+	onError: function(err) {
 		// Called whenever the watcher encounters any errors
 	}
 });
