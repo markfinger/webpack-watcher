@@ -12,6 +12,7 @@ var WebpackWatcher = function WebpackWatcher(compiler, options) {
 	this.compiler.plugin('invalid', this.handleBundleInvalidation.bind(this));
 	this.compiler.plugin('compile', this.handleBundleInvalidation.bind(this));
 	this.watcher = this.compiler.watch(this.options.watchDelay, this.handleBundleError.bind(this));
+	this.stats = null;
 	this.isInitialBuild = true;
 };
 
@@ -23,6 +24,7 @@ WebpackWatcher.prototype.defaultOptions = {
 };
 
 WebpackWatcher.prototype.handleBundleError = function handleBundleError(err) {
+	this.stats = null;
 	if (err && this.options.onError) {
 		this.options.onError(err);
 	}
@@ -36,6 +38,7 @@ WebpackWatcher.prototype.handleBundleDone = function handleBundleDone(stats) {
 		if (!this.isReady) {
 			return;
 		}
+		this.stats = stats;
 		if (this.options.onDone) {
 			this.options.onDone(stats);
 		}
@@ -56,6 +59,7 @@ WebpackWatcher.prototype.handleBundleDone = function handleBundleDone(stats) {
 
 WebpackWatcher.prototype.handleBundleInvalidation = function handleBundleInvalidation() {
 	this.isReady = false;
+	this.stats = null;
 	if (this.options.onInvalid) {
 		this.options.onInvalid();
 	}
@@ -67,7 +71,7 @@ WebpackWatcher.prototype.readFileSync = function readFileSync(filename) {
 
 WebpackWatcher.prototype.onReady = function onReady(callback) {
 	if (this.isReady) {
-		callback();
+		callback(this.stats);
 	} else {
 		this.onReadyCallbacks.push(callback);
 	}
