@@ -1,9 +1,9 @@
 var MemoryFileSystem = require('memory-fs');
-var defaults = require('lodash.defaults');
+var _ = require('lodash');
 
 var WebpackWatcher = function WebpackWatcher(compiler, options) {
 	this.compiler = compiler;
-	this.options = defaults(options, this.defaultOptions);
+	this.options = _.defaults(options, this.defaultOptions);
 	this.isReady = false;
 	this.onReadyCallbacks = [];
 	this.fs = new MemoryFileSystem();
@@ -12,6 +12,7 @@ var WebpackWatcher = function WebpackWatcher(compiler, options) {
 	this.compiler.plugin('invalid', this.handleBundleInvalidation.bind(this));
 	this.compiler.plugin('compile', this.handleBundleInvalidation.bind(this));
 	this.watcher = this.compiler.watch(this.options.watchDelay, this.handleBundleError.bind(this));
+	this.isInitialBuild = true;
 };
 
 WebpackWatcher.prototype.defaultOptions = {
@@ -37,6 +38,15 @@ WebpackWatcher.prototype.handleBundleDone = function handleBundleDone(stats) {
 		}
 		if (this.options.onDone) {
 			this.options.onDone(stats);
+		}
+		var isInitialBuild = this.isInitialBuild;
+		this.isInitialBuild = false;
+		// When building bundles with multiple entries, the first `done` signal
+		// seems to be triggered too early to read the generated files. So we
+		// need to defer calling the onReadyCallbacks until the second done is
+		// triggered.
+		if (isInitialBuild && _.isArray(this.compiler.options.entry)) {
+			return;
 		}
 		var onReadyCallbacks = this.onReadyCallbacks;
 		this.onReadyCallbacks = [];
