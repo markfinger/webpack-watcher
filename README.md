@@ -39,7 +39,7 @@ var webpackWatcher = new WebpackWatcher(compiler, {
 // Callbacks provided to onReady will be called immediately, if the bundle
 // has already been generated, or as soon as webpack has completed.
 // Unlike onDone and onInvalid, onReady callbacks will only be called once
-webpackWatcher.onReady(function() {
+webpackWatcher.onReady(function(stats) {
 	// Read the bundle from memory by specifying an output path
 	// which matches those in your config
 	var content = watcher.readFileSync('/path/to/file.js');
