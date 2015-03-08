@@ -78,6 +78,7 @@ WebpackWatcher.prototype.onReady = function onReady(callback) {
 };
 
 WebpackWatcher.prototype.invalidateWatcher = function invalidateWatcher() {
+	this.handleBundleInvalidation();
 	return this.watcher.invalidate();
 };
 
