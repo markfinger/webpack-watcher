@@ -39,17 +39,15 @@ WebpackWatcher.prototype.handleBundleDone = function handleBundleDone(stats) {
 			return;
 		}
 		this.stats = stats;
+		// When initially building bundles, webpack sends two `done` signals.
+		// Sometimes the first is triggered too early to read the generated
+		// files. So we defer until the second occurs.
+		if (this.isInitialBuild) {
+			this.isInitialBuild = false;
+			return;
+		}
 		if (this.options.onDone) {
 			this.options.onDone(stats);
-		}
-		var isInitialBuild = this.isInitialBuild;
-		this.isInitialBuild = false;
-		// When building bundles with multiple entries, the first `done` signal
-		// seems to be triggered too early to read the generated files. So we
-		// need to defer calling the onReadyCallbacks until the second done is
-		// triggered.
-		if (isInitialBuild && _.isArray(this.compiler.options.entry)) {
-			return;
 		}
 		var onReadyCallbacks = this.onReadyCallbacks;
 		this.onReadyCallbacks = [];
