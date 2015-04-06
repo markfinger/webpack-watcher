@@ -1,13 +1,13 @@
 # webpack-watcher
 
 A wrapper around webpack compilers which:
-- improves the bundling speed by performing all operations in memory
+- improves performance by writing to an in-memory filesystem
 - watches the files and continually regenerates the bundles in the background
-- provides a callback interface to detect when a bundle has been invalidated or completed
-- provides a callback interface to request generated bundles
-
-webpack-watcher was built to improve webpack's performance during development by
-enabling an easy API for caching generated bundles.
+- provides a callback interface to detect when a bundle:
+  - has been invalidated
+  - has produced an error
+  - has completed
+  - is ready to write to disk
 
 ## Basic usage
 
@@ -17,49 +17,41 @@ var webpack = require('webpack');
 var WebpackWatcher = require('webpack-watcher');
 var config = require('./path/to/your/webpack.config');
 
-var compiler = webpack(config, function(err) {
-	if (err) {
-		console.error(err);
-	}
-})
+var compiler = webpack(config);
 
-var webpackWatcher = new WebpackWatcher(compiler, {
-	onInvalid: function() {
-		// Called whenever the watcher determines that the bundle
-		// needs to be regenerated
-	},
-	onDone: function(stats) {
-		// Called every time the bundle has been generated
-	},
-	onError: function(err) {
-		// Called whenever the watcher encounters any errors
-	}
+var watcher = new WebpackWatcher(compiler);
+
+watcher.onInvalid(function() {
+  // Called whenever the watcher determines that the bundle
+  // needs to be regenerated
 });
 
-// Callbacks provided to onReady will be called immediately, if the bundle
-// has already been generated, or as soon as webpack has completed.
-// Unlike onDone and onInvalid, onReady callbacks will only be called once
-webpackWatcher.onReady(function(stats) {
-	// Read the bundle from memory by specifying an output path
-	// which matches those in your config
-	var content = watcher.readFileSync('/path/to/file.js');
-	// Write the bundle to disk
-	fs.writeFileSync('/path/to/file.js', content);
+watcher.onDone(function(stats) {
+  // Called every time the compilation process has completed
 });
+
+watcher.onFailed(function(err) {
+  // Called whenever the compiler encounters any errors
+});
+
+watcher.whenReady(function(err, stats) {
+  // Called when the bundle has completed. Note: whenReady callbacks will
+  // only ever be called once
+  if (err) throw err;
+
+  // Read the bundle from memory and write it to disk
+  watcher.fs.readFile('/path/to/file.js', function(err, data) {
+    fs.writeFile('/path/to/file.js', data, function(err) {
+      // ...
+    });
+  });
+});
+
+// Invalidate the compiler's watcher
+watcher.invalidateWatcher()
+
+// Close the compiler's watcher
+watcher.closeWatcher()
 ```
 
-Be aware that a `WebpackWatcher` will immediately invoke the compiler so that
-the bundle is ready as soon as possible.
-
-If you want to easily maintain a bundle cache, you can use `onInvalid` and `onDone`
-callbacks to invalidate/populate your cache.
-
-If you only want to populate the cache on demand, use `onInvalid` + `onDone` to
-invalidate it and use `onReady` for populating it.
-
-You can invalidate the compiler's watcher with `webpackWatcher.invalidateWatcher()`.
-
-You can close the compiler's watcher with `webpackWatcher.closeWatcher()`.
-
-This codebase is pretty heavily indebted to
-[webpack-dev-middleware](https://github.com/webpack/webpack-dev-middleware).
+This codebase is pretty heavily indebted to [webpack-dev-middleware](https://github.com/webpack/webpack-dev-middleware).
