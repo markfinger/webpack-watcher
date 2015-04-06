@@ -61,4 +61,21 @@ watcher.invalidateWatcher();
 watcher.closeWatcher();
 ```
 
+
+Configuration
+-------------
+
+```javascript
+// Defaults
+var watcher = new WebpackWatcher(compiler, {
+  // The delay between a change being detected and the restart
+  // of the bundle compilation process
+  watchDelay: 200,
+  // Should the rebuilt files be written to memory whenever
+  // the compilation process completes. If true, this reduces
+  // the overhead of background compilation
+  useMemoryFS: true
+});
+```
+
 This codebase is heavily indebted to [webpack-dev-middleware](https://github.com/webpack/webpack-dev-middleware).
