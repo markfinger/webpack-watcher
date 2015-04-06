@@ -1,20 +1,20 @@
 var fs = require('fs');
 var path = require('path');
-var child_process = require('child_process');
 var assert = require('chai').assert;
 var _ = require('lodash');
 var mkdirp = require('mkdirp');
 var webpack = require('webpack');
+var spawnSync = require('spawn-sync'); // Node 0.10.x support
 var WebpackWatcher = require('../lib');
 
 var TEST_OUTPUT_DIR = path.join(__dirname, 'test_output');
 
 // Ensure we have a clean slate before and after each test
 beforeEach(function() {
-  child_process.spawnSync('rm', ['-rf', TEST_OUTPUT_DIR]);
+  spawnSync('rm', ['-rf', TEST_OUTPUT_DIR]);
 });
 afterEach(function() {
-  child_process.spawnSync('rm', ['-rf', TEST_OUTPUT_DIR]);
+  spawnSync('rm', ['-rf', TEST_OUTPUT_DIR]);
 });
 
 describe('WebpackWatcher', function() {
