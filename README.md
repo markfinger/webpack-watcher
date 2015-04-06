@@ -1,4 +1,8 @@
-# webpack-watcher
+webpack-watcher
+===============
+
+[![Build Status](https://travis-ci.org/markfinger/webpack-watcher.svg?branch=master)](https://travis-ci.org/markfinger/webpack-watcher)
+
 
 A wrapper around webpack compilers which:
 - improves performance by writing to an in-memory filesystem
@@ -8,7 +12,8 @@ A wrapper around webpack compilers which:
   - has been invalidated by the watcher
   - has produced errors during the compilation process
 
-## Basic usage
+Basic usage
+-----------
 
 ```javascript
 var fs = require('fs');
