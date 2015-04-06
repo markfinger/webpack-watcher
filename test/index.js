@@ -77,7 +77,7 @@ describe('WebpackWatcher', function() {
     assert.equal(onInvalidCalls, 0);
     assert.equal(onDoneCalls, 0);
 
-    watcher.whenReady(function(err, stats) {
+    watcher.onceDone(function(err, stats) {
       assert.isNull(err);
       assert.isObject(stats);
       assert.equal(onInvalidCalls, 0);
@@ -102,7 +102,7 @@ describe('WebpackWatcher', function() {
   it('can block until a bundle is generated', function(done) {
     var compiler = webpack(require('./basic_bundle/webpack.config'));
     var watcher = new WebpackWatcher(compiler);
-    watcher.whenReady(function(err, stats) {
+    watcher.onceDone(function(err, stats) {
       assert.isNull(err);
       assert.isObject(stats);
       var outputPath = path.join(TEST_OUTPUT_DIR, 'basic_bundle', 'output.js');
@@ -132,7 +132,7 @@ describe('WebpackWatcher', function() {
     var watcher = new WebpackWatcher(webpack(config), {
       useMemoryFS: false
     });
-    watcher.whenReady(function(err, stats) {
+    watcher.onceDone(function(err, stats) {
       assert.isNull(err);
       assert.isObject(stats);
       assert.equal(stats.compilation.assets['output.js'].existsAt, output);
@@ -141,7 +141,7 @@ describe('WebpackWatcher', function() {
         assert.include(data.toString(), '__INVALIDATED_BUNDLE_ONE__');
         watcher.onInvalid(_.once(function() {
           assert.isFalse(watcher.isReady);
-          watcher.whenReady(function() {
+          watcher.onceDone(function() {
             watcher.fs.readFile(output, function(err, data) {
               assert.isNull(err);
               assert.include(data.toString(), '__INVALIDATED_BUNDLE_TWO__');
@@ -158,7 +158,7 @@ describe('WebpackWatcher', function() {
       });
     });
   });
-  it('calls whenReady if an error occurs', function(done) {
+  it('calls onceDone if an error occurs', function(done) {
     var config = {
       context: '/path/does/not/exist/',
       entry: './some_file.js',
@@ -169,7 +169,7 @@ describe('WebpackWatcher', function() {
     };
     var watcher = new WebpackWatcher(webpack(config));
 
-    watcher.whenReady(function(err) {
+    watcher.onceDone(function(err) {
       assert.instanceOf(err, Error);
       assert.include(err.stack, './some_file.js');
       assert.include(err.stack, '/path/does/not/exist/');

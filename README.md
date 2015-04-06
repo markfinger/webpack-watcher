@@ -30,13 +30,9 @@ watcher.onDone(function(stats) {
   // Called every time the compilation process has completed
 });
 
-watcher.onFailed(function(err) {
-  // Called whenever the compiler encounters any errors
-});
-
-watcher.whenReady(function(err, stats) {
-  // Called when the bundle has completed. Note: whenReady callbacks will
-  // only ever be called once
+watcher.onceDone(function(err, stats) {
+  // If the compilation process has completed, this will be called immediately,
+  // otherwise it will be called when the process next completes.
   if (err) throw err;
 
   // Read the bundle from memory and write it to disk
