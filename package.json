@@ -14,7 +14,20 @@
   },
   "homepage": "https://github.com/markfinger/webpack-watcher",
   "dependencies": {
-    "lodash": "^3.4.0",
+    "lodash": "^3.6.0",
     "memory-fs": "^0.2.0"
+  },
+  "peerDependencies": {
+    "webpack": "*"
+  },
+  "devDependencies": {
+    "chai": "^2.2.0",
+    "mocha": "^2.2.1",
+    "webpack": "*",
+    "mkdirp": "^0.5.0"
+  },
+  "scripts": {
+    "test": "mocha",
+    "test-debug": "mocha debug"
   }
 }
