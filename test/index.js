@@ -5,7 +5,7 @@ var _ = require('lodash');
 var mkdirp = require('mkdirp');
 var webpack = require('webpack');
 var spawnSync = require('spawn-sync'); // Node 0.10.x support
-var WebpackWatcher = require('../lib');
+var WebpackWatcher = require('..');
 
 var TEST_OUTPUT_DIR = path.join(__dirname, 'test_output');
 
