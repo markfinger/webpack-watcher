@@ -2,12 +2,11 @@
 
 A wrapper around webpack compilers which:
 - improves performance by writing to an in-memory filesystem
-- watches the files and continually regenerates the bundles in the background
+- watches the files and continually recompiles the bundles in the background
 - provides a callback interface to detect when a bundle:
-  - has been invalidated
-  - has produced an error
-  - has completed
-  - is ready to write to disk
+  - has completed the compilation process
+  - has been invalidated by the watcher
+  - has produced errors during the compilation process
 
 ## Basic usage
 
@@ -21,13 +20,9 @@ var compiler = webpack(config);
 
 var watcher = new WebpackWatcher(compiler);
 
-watcher.onInvalid(function() {
-  // Called whenever the watcher determines that the bundle
-  // needs to be regenerated
-});
-
 watcher.onDone(function(stats) {
   // Called every time the compilation process has completed
+  // ...
 });
 
 watcher.onceDone(function(err, stats) {
@@ -43,11 +38,22 @@ watcher.onceDone(function(err, stats) {
   });
 });
 
+watcher.onInvalid(function() {
+  // Called whenever the compiler's watcher determines that the bundle
+  // needs to be recompiled
+  // ...
+});
+
+watcher.onFailed(function(err) {
+  // Called whenever the compiler encounters any errors
+  // ...
+});
+
 // Invalidate the compiler's watcher
-watcher.invalidateWatcher()
+watcher.invalidateWatcher();
 
 // Close the compiler's watcher
-watcher.closeWatcher()
+watcher.closeWatcher();
 ```
 
-This codebase is pretty heavily indebted to [webpack-dev-middleware](https://github.com/webpack/webpack-dev-middleware).
+This codebase is heavily indebted to [webpack-dev-middleware](https://github.com/webpack/webpack-dev-middleware).
