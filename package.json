@@ -1,7 +1,7 @@
 {
   "name": "webpack-watcher",
   "version": "0.2.0",
-  "description": "Webpack watcher",
+  "description": "Webpack compiler wrapper",
   "main": "lib/index.js",
   "repository": {
     "type": "git",
