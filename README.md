@@ -6,11 +6,10 @@ webpack-watcher
 
 A wrapper around webpack compilers which:
 - improves performance by writing assets to an in-memory filesystem
-- watches the files and continually recompiles the assets in the background
-- provides a callback interface to detect when a bundle:
-  - has completed the compilation process
-  - has been invalidated by the watcher
-  - has produced errors during the compilation process
+- provides a callback interface to detect when:
+  - the compilation process has completed
+  - a watcher has invalidated the compiled assets
+  - the compilation process has failed and/or encountered errors
 
 Basic usage
 -----------
