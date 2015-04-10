@@ -4,6 +4,7 @@ var assert = require('chai').assert;
 var _ = require('lodash');
 var mkdirp = require('mkdirp');
 var webpack = require('webpack');
+var MemoryFileSystem = require('memory-fs');
 var spawnSync = require('spawn-sync'); // Node 0.10.x support
 var WebpackWatcher = require('..');
 
@@ -52,6 +53,18 @@ describe('WebpackWatcher', function() {
     });
 
     watcher.onceDone(function(){});
+  });
+  it('respects the useMemoryFS option', function() {
+    var watcher = new WebpackWatcher(webpack({}), {
+      useMemoryFS: false
+    });
+    assert.strictEqual(watcher.fs, fs);
+
+    watcher = new WebpackWatcher(webpack({}), {
+      useMemoryFS: true
+    });
+    assert.instanceOf(watcher.fs, MemoryFileSystem);
+    assert.instanceOf(watcher.compiler.outputFileSystem, MemoryFileSystem);
   });
   it('can provide onInvalid and onDone hooks', function(done) {
     var entry = path.join(TEST_OUTPUT_DIR, 'hook_test', 'entry.js');
@@ -133,9 +146,7 @@ describe('WebpackWatcher', function() {
     };
     mkdirp.sync(path.dirname(entry));
     fs.writeFileSync(entry, 'module.exports = "__INVALIDATED_BUNDLE_ONE__";');
-    var watcher = new WebpackWatcher(webpack(config), {
-      useMemoryFS: false
-    });
+    var watcher = new WebpackWatcher(webpack(config));
     watcher.onceDone(function(err, stats) {
       assert.isNull(err);
       assert.isObject(stats);
@@ -331,10 +342,10 @@ describe('WebpackWatcher', function() {
                     done();
                   });
                 });
-              }, 500);
+              }, 200);
             });
           });
-        }, 500);
+        }, 200);
       });
     });
   });
