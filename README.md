@@ -3,13 +3,13 @@ webpack-watcher
 
 [![Build Status](https://travis-ci.org/markfinger/webpack-watcher.svg?branch=master)](https://travis-ci.org/markfinger/webpack-watcher)
 
-
 A wrapper around webpack compilers which:
 - improves performance by writing assets to an in-memory filesystem
 - provides a callback interface to detect when:
   - the compilation process has completed
-  - a watcher has invalidated the compiled assets
+  - the compiled assets have been invalidated by a plugin (for example: webpack's file watcher)
   - the compilation process has failed and/or encountered errors
+
 
 Basic usage
 -----------
@@ -25,37 +25,38 @@ var compiler = webpack(config);
 var watcher = new WebpackWatcher(compiler);
 
 watcher.onceDone(function(err, stats) {
-  // If the compilation process has completed, this will be called immediately,
-  // otherwise it will be called when the process next completes.
-  if (err) throw err;
+  // Called once the current compilation process has completed. If the
+  // process has already completed, the function will be called immediately.
+  // If a compilation process is already underway, concurrent calls to
+  // `onceDone` will stack up until the process completes.
+});
 
-  watcher.writeAssets(function(err, filenames) {
-    // Read the assets from memory and write them to the file system
-    // ...
-  });
+watcher.writeAssets(function(err, filenames) {
+  // Read the assets from memory and write them to the file system
 });
 
 watcher.onDone(function(err, stats) {
   // Called every time the compilation completes
-  // ...
 });
 
 watcher.onInvalid(function() {
   // Called whenever the compiler's watcher determines that the bundle
   // needs to be recompiled
-  // ...
 });
 
 watcher.onFailed(function(err) {
-  // Called if the compiler failed or the compilation process produced errors
-  // ...
+  // Called if the compilation process failed or produced errors
 });
 
-// Start the compilation process
-// Note: this is called automatically if you use `onceDone`
-watcher.start();
+// Run the compilation process once and start the watcher.
+// Called automatically by `onceDone`, if `watch: true`
+watcher.watch();
 
-// Trigger a rebuild of the bundle
+// Run the compilation process once.
+// Called automatically by `onceDone`, if `watch: false`
+watcher.run();
+
+// Force the compiler to invalidate the assets.
 watcher.invalidate();
 
 // Close the compiler's watcher
@@ -67,9 +68,13 @@ Configuration
 -------------
 
 ```javascript
+// defaults
+
 var watcher = new WebpackWatcher(webpack(config), {
+  // Indicates that your source files should be watched for changes
+  watch: true,
   // The delay between a change being detected and the restart
-  // of the bundle compilation process
+  // of the compilation process
   watchDelay: 200,
   // Reduces the overhead of background compilation by forcing
   // the compiler to write to an in-memory filesystem.
