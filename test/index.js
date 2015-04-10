@@ -128,7 +128,8 @@ describe('WebpackWatcher', function() {
       output: {
         path: path.dirname(output),
         filename: path.basename(output)
-      }
+      },
+      cache: false
     };
     mkdirp.sync(path.dirname(entry));
     fs.writeFileSync(entry, 'module.exports = "__INVALIDATED_BUNDLE_ONE__";');
