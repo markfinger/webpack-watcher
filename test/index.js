@@ -181,7 +181,8 @@ describe('WebpackWatcher', function() {
       output: {
         path: path.dirname(output),
         filename: path.basename(output)
-      }
+      },
+      cache: false
     });
 
     var watcher = new WebpackWatcher(compiler);
@@ -229,7 +230,8 @@ describe('WebpackWatcher', function() {
       output: {
         path: path.dirname(output),
         filename: path.basename(output)
-      }
+      },
+      cache: false
     });
 
     var watcher = new WebpackWatcher(compiler);
@@ -281,7 +283,8 @@ describe('WebpackWatcher', function() {
       output: {
         path: path.dirname(output),
         filename: path.basename(output)
-      }
+      },
+      cache: false
     });
 
     var watcher = new WebpackWatcher(compiler);
@@ -347,7 +350,8 @@ describe('WebpackWatcher', function() {
       output: {
         path: path.dirname(output),
         filename: path.basename(output)
-      }
+      },
+      cache: false
     });
 
     var watcher = new WebpackWatcher(compiler);

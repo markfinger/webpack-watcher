@@ -6,5 +6,6 @@ module.exports = {
   output: {
     path: path.join(__dirname, '..', 'test_output', 'basic_bundle'),
     filename: 'output.js'
-  }
+  },
+  cache: false
 };
