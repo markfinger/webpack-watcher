@@ -7,6 +7,11 @@ var webpack = require('webpack');
 var spawnSync = require('spawn-sync'); // Node 0.10.x support
 var WebpackWatcher = require('..');
 
+// Note: some of the tests will fail inconsistently, this seems to relate
+// to issues with file watchers detecting changes. Run the tests a few
+// times and see if it fixes the issue.
+
+
 var TEST_OUTPUT_DIR = path.join(__dirname, 'test_output');
 
 // Ensure we have a clean slate before and after each test
@@ -28,7 +33,7 @@ describe('WebpackWatcher', function() {
     assert.strictEqual(watcher.compiler, compiler);
     assert.strictEqual(watcher.opts, opts);
   });
-  it('can provide onFailure hooks', function(done) {
+  it('can provide onFailed hooks', function(done) {
     var config = {
       context: '/path/does/not/exist/',
       entry: './some_file.js',
@@ -39,7 +44,7 @@ describe('WebpackWatcher', function() {
     };
     var watcher = new WebpackWatcher(webpack(config));
 
-    watcher.onFailure(function(err) {
+    watcher.onFailed(function(err) {
       assert.instanceOf(err, Error);
       assert.include(err.stack, './some_file.js');
       assert.include(err.stack, '/path/does/not/exist/');
@@ -107,13 +112,11 @@ describe('WebpackWatcher', function() {
       assert.isObject(stats);
       var outputPath = path.join(TEST_OUTPUT_DIR, 'basic_bundle', 'output.js');
       assert.equal(stats.compilation.assets['output.js'].existsAt, outputPath);
-      watcher.fs.readFile(outputPath, function(err, data) {
-        assert.isNull(err);
-        var content = data.toString();
-        assert.include(content, '__BASIC_BUNDLE_ENTRY_TEST__');
-        assert.include(content, '__BASIC_BUNDLE_REQUIRE_TEST__');
-        done();
-      });
+      var content = watcher.fs.readFileSync(outputPath);
+      content = content.toString();
+      assert.include(content, '__BASIC_BUNDLE_ENTRY_TEST__');
+      assert.include(content, '__BASIC_BUNDLE_REQUIRE_TEST__');
+      done();
     });
   });
   it('can block until an invalidated bundle has been rebuilt', function(done) {
@@ -136,26 +139,18 @@ describe('WebpackWatcher', function() {
       assert.isNull(err);
       assert.isObject(stats);
       assert.equal(stats.compilation.assets['output.js'].existsAt, output);
-      watcher.fs.readFile(output, function(err, data) {
-        assert.isNull(err);
-        assert.include(data.toString(), '__INVALIDATED_BUNDLE_ONE__');
-        watcher.onInvalid(_.once(function() {
-          assert.isFalse(watcher.isReady);
-          watcher.onceDone(function() {
-            watcher.fs.readFile(output, function(err, data) {
-              assert.isNull(err);
-              assert.include(data.toString(), '__INVALIDATED_BUNDLE_TWO__');
-              done();
-            });
-          });
-        }));
-        // Need to wait for the watcher to kick in
-        setTimeout(function() {
-          fs.writeFile(entry, 'module.exports = "__INVALIDATED_BUNDLE_TWO__";', function(err) {
-            assert.isNull(err);
-          });
-        }, 200);
-      });
+      var content = watcher.fs.readFileSync(output);
+      assert.include(content.toString(), '__INVALIDATED_BUNDLE_ONE__');
+      watcher.onInvalid(_.once(function() {
+        assert.isFalse(watcher.isReady);
+        watcher.onceDone(function(err) {
+          assert.isNull(err);
+          content = watcher.fs.readFileSync(output);
+          assert.include(content.toString(), '__INVALIDATED_BUNDLE_TWO__');
+          done();
+        });
+      }));
+      fs.writeFileSync(entry, 'module.exports = "__INVALIDATED_BUNDLE_TWO__";');
     });
   });
   it('calls onceDone if an error occurs', function(done) {
@@ -174,6 +169,245 @@ describe('WebpackWatcher', function() {
       assert.include(err.stack, './some_file.js');
       assert.include(err.stack, '/path/does/not/exist/');
       done();
+    });
+  });
+  it('continues to detect changes and rebuild the bundle', function(done) {
+    var entry = path.join(TEST_OUTPUT_DIR, 'persistent_watch', 'entry.js');
+    var output = path.join(TEST_OUTPUT_DIR, 'persistent_watch', 'output.js');
+
+    var compiler = webpack({
+      context: path.dirname(entry),
+      entry: './' + path.basename(entry),
+      output: {
+        path: path.dirname(output),
+        filename: path.basename(output)
+      }
+    });
+
+    var watcher = new WebpackWatcher(compiler);
+
+    mkdirp.sync(path.dirname(entry));
+
+    fs.writeFileSync(entry, 'module.exports = "__WATCH_TEST_ONE__";');
+    watcher.onceDone(function(err, stats) {
+      assert.isNull(err);
+      assert.isObject(stats);
+      assert.equal(output, stats.compilation.assets['output.js'].existsAt);
+      var contents = watcher.fs.readFileSync(output);
+      var compiledBundle = contents.toString();
+      assert.include(compiledBundle, '__WATCH_TEST_ONE__');
+      fs.writeFileSync(entry, 'module.exports = "__WATCH_TEST_TWO__";');
+      setTimeout(function() {
+        watcher.onceDone(function(err, stats) {
+          assert.isNull(err);
+          assert.isObject(stats);
+          assert.equal(output, stats.compilation.assets['output.js'].existsAt);
+          contents = watcher.fs.readFileSync(output);
+          assert.include(contents.toString(), '__WATCH_TEST_TWO__');
+          fs.writeFileSync(entry, 'module.exports = "__WATCH_TEST_THREE__";');
+          setTimeout(function() {
+            watcher.onceDone(function(err, stats) {
+              assert.isNull(err);
+              assert.isObject(stats);
+              assert.equal(output, stats.compilation.assets['output.js'].existsAt);
+              contents = watcher.fs.readFileSync(output);
+              assert.include(contents.toString(), '__WATCH_TEST_THREE__');
+              done();
+            });
+          }, 200);
+        });
+      }, 200);
+    });
+  });
+  it('allows files to be read from memory and written to disk', function(done) {
+    var entry = path.join(TEST_OUTPUT_DIR, 'rw_test', 'entry.js');
+    var output = path.join(TEST_OUTPUT_DIR, 'rw_test', 'output.js');
+
+    var compiler = webpack({
+      context: path.dirname(entry),
+      entry: './' + path.basename(entry),
+      output: {
+        path: path.dirname(output),
+        filename: path.basename(output)
+      }
+    });
+
+    var watcher = new WebpackWatcher(compiler);
+
+    mkdirp.sync(path.dirname(entry));
+
+    fs.writeFileSync(entry, 'module.exports = "__RW_TEST_ONE__";');
+    watcher.onceDone(function(err, stats) {
+      assert.isNull(err);
+      assert.isObject(stats);
+      assert.equal(output, stats.compilation.assets['output.js'].existsAt);
+      var contents = watcher.fs.readFileSync(output);
+      fs.writeFileSync(output, contents);
+      contents = fs.readFileSync(output);
+      assert.include(contents.toString(), '__RW_TEST_ONE__');
+      fs.writeFileSync(entry, 'module.exports = "__RW_TEST_TWO__";');
+      setTimeout(function() {
+        watcher.onceDone(function(err, stats) {
+          assert.isNull(err);
+          assert.isObject(stats);
+          assert.equal(output, stats.compilation.assets['output.js'].existsAt);
+          contents = watcher.fs.readFileSync(output);
+          fs.writeFileSync(output, contents);
+          contents = fs.readFileSync(output);
+          assert.include(contents.toString(), '__RW_TEST_TWO__');
+          fs.writeFileSync(entry, 'module.exports = "__RW_TEST_THREE__";');
+          setTimeout(function() {
+            watcher.onceDone(function(err, stats) {
+              assert.isNull(err);
+              assert.isObject(stats);
+              contents = watcher.fs.readFileSync(output);
+              fs.writeFileSync(output, contents);
+              contents = fs.readFileSync(output);
+              assert.include(contents.toString(), '__RW_TEST_THREE__');
+              done();
+            });
+          }, 200);
+        });
+      }, 200);
+    });
+  });
+  it('provides an async method to write files from memory to disk', function(done) {
+    var entry = path.join(TEST_OUTPUT_DIR, 'write_files_async', 'entry.js');
+    var output = path.join(TEST_OUTPUT_DIR, 'write_files_async', 'output.js');
+
+    var compiler = webpack({
+      context: path.dirname(entry),
+      entry: './' + path.basename(entry),
+      output: {
+        path: path.dirname(output),
+        filename: path.basename(output)
+      }
+    });
+
+    var watcher = new WebpackWatcher(compiler);
+
+    mkdirp.sync(path.dirname(entry));
+    fs.writeFileSync(entry, 'module.exports = "__ASYNC_WRITE_FILE_TEST_ONE__";');
+
+    watcher.onceDone(function(err, stats) {
+      assert.isNull(err);
+      assert.isObject(stats);
+      assert.equal(output, stats.compilation.assets['output.js'].existsAt);
+      watcher.writeAssets(function(err, filenames) {
+        assert.isNull(err);
+        assert.isArray(filenames);
+        assert.equal(filenames.length, 1);
+        assert.equal(filenames[0], output);
+        var contents = fs.readFileSync(output);
+        assert.include(contents.toString(), '__ASYNC_WRITE_FILE_TEST_ONE__');
+        fs.writeFileSync(entry, 'module.exports = "__ASYNC_WRITE_FILE_TEST_TWO__";');
+        setTimeout(function() {
+          watcher.onceDone(function(err, stats) {
+            assert.isNull(err);
+            assert.isObject(stats);
+            watcher.writeAssets(function(err, filenames) {
+              assert.isNull(err);
+              assert.isArray(filenames);
+              assert.equal(filenames.length, 1);
+              assert.equal(filenames[0], output);
+              contents = fs.readFileSync(output);
+              assert.include(contents.toString(), '__ASYNC_WRITE_FILE_TEST_TWO__');
+              fs.writeFileSync(entry, 'module.exports = "__ASYNC_WRITE_FILE_TEST_THREE__";');
+              setTimeout(function() {
+                watcher.onceDone(function(err, stats) {
+                  assert.isNull(err);
+                  assert.isObject(stats);
+                  watcher.writeAssets(function(err, filenames) {
+                    assert.isNull(err);
+                    assert.isArray(filenames);
+                    assert.equal(filenames.length, 1);
+                    assert.equal(filenames[0], output);
+                    contents = fs.readFileSync(output);
+                    assert.include(contents.toString(), '__ASYNC_WRITE_FILE_TEST_THREE__');
+                    done();
+                  });
+                });
+              }, 200);
+            });
+          });
+        }, 200);
+      });
+    });
+  });
+  it('provides a way to invalidate the watcher', function(done) {
+    var entry = path.join(TEST_OUTPUT_DIR, 'watcher_invalidate', 'entry.js');
+    var output = path.join(TEST_OUTPUT_DIR, 'watcher_invalidate', 'output.js');
+
+    mkdirp.sync(path.dirname(entry));
+    fs.writeFileSync(entry, 'module.exports = "__INVALID_TEST_ONE__";');
+
+    var compiler = webpack({
+      context: path.dirname(entry),
+      entry: './' + path.basename(entry),
+      output: {
+        path: path.dirname(output),
+        filename: path.basename(output)
+      }
+    });
+
+    var watcher = new WebpackWatcher(compiler);
+
+    var invalidCount = 0;
+    watcher.onInvalid(function() {
+      invalidCount++;
+    });
+
+    watcher.onceDone(function(err, stats) {
+      assert.isNull(err);
+      assert.isObject(stats);
+      assert.equal(output, stats.compilation.assets['output.js'].existsAt);
+      assert.equal(invalidCount, 0);
+      watcher.writeAssets(function(err, filenames) {
+        assert.equal(invalidCount, 1);
+        assert.isNull(err);
+        assert.isArray(filenames);
+        assert.equal(filenames.length, 1);
+        assert.equal(filenames[0], output);
+        var contents = fs.readFileSync(output);
+        assert.include(contents.toString(), '__INVALID_TEST_ONE__');
+        assert.equal(invalidCount, 1);
+        fs.writeFileSync(entry, 'module.exports = "__INVALID_TEST_TWO__";');
+        assert.equal(invalidCount, 1);
+        watcher.invalidate();
+        assert.isNull(watcher.err);
+        assert.isNull(watcher.stats);
+        assert.equal(invalidCount, 2);
+        watcher.onceDone(function(err, stats) {
+          assert.isNull(err);
+          assert.isObject(stats);
+          watcher.writeAssets(function(err, filenames) {
+            assert.isNull(err);
+            assert.isArray(filenames);
+            assert.equal(filenames.length, 1);
+            assert.equal(filenames[0], output);
+            contents = fs.readFileSync(output);
+            assert.include(contents.toString(), '__INVALID_TEST_TWO__');
+            assert.equal(invalidCount, 2);
+            fs.writeFileSync(entry, 'module.exports = "__INVALID_TEST_THREE__";');
+            assert.equal(invalidCount, 2);
+            watcher.invalidate();
+            assert.equal(invalidCount, 3);
+            watcher.onceDone(function(err, stats) {
+              assert.isNull(err);
+              assert.isObject(stats);
+              watcher.writeAssets(function(err, filenames) {
+                assert.isNull(err);
+                assert.isArray(filenames);
+                assert.equal(filenames.length, 1);
+                assert.equal(filenames[0], output);
+                contents = fs.readFileSync(output);
+                assert.include(contents.toString(), '__INVALID_TEST_THREE__');
+                done();
+              });
+            });
+          });
+        });
+      });
     });
   });
 });

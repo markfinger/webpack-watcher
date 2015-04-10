@@ -5,8 +5,8 @@ webpack-watcher
 
 
 A wrapper around webpack compilers which:
-- improves performance by writing to an in-memory filesystem
-- watches the files and continually recompiles the bundles in the background
+- improves performance by writing assets to an in-memory filesystem
+- watches the files and continually recompiles the assets in the background
 - provides a callback interface to detect when a bundle:
   - has completed the compilation process
   - has been invalidated by the watcher
@@ -25,22 +25,20 @@ var compiler = webpack(config);
 
 var watcher = new WebpackWatcher(compiler);
 
-watcher.onDone(function(stats) {
-  // Called every time the compilation process has completed
-  // ...
-});
-
 watcher.onceDone(function(err, stats) {
   // If the compilation process has completed, this will be called immediately,
   // otherwise it will be called when the process next completes.
   if (err) throw err;
 
-  // Read the bundle from memory and write it to disk
-  watcher.fs.readFile('/path/to/file.js', function(err, data) {
-    fs.writeFile('/path/to/file.js', data, function(err) {
-      // ...
-    });
+  watcher.writeAssets(function(err, filenames) {
+    // Read the assets from memory and write them to the file system
+    // ...
   });
+});
+
+watcher.onDone(function(err, stats) {
+  // Called every time the compilation completes
+  // ...
 });
 
 watcher.onInvalid(function() {
@@ -50,15 +48,19 @@ watcher.onInvalid(function() {
 });
 
 watcher.onFailed(function(err) {
-  // Called whenever the compiler encounters any errors
+  // Called if the compiler failed or the compilation process produced errors
   // ...
 });
 
-// Invalidate the compiler's watcher
-watcher.invalidateWatcher();
+// Start the compilation process
+// Note: this is called automatically if you use `onceDone`
+watcher.start();
+
+// Trigger a rebuild of the bundle
+watcher.invalidate();
 
 // Close the compiler's watcher
-watcher.closeWatcher();
+watcher.close();
 ```
 
 
@@ -66,14 +68,12 @@ Configuration
 -------------
 
 ```javascript
-// Defaults
-var watcher = new WebpackWatcher(compiler, {
+var watcher = new WebpackWatcher(webpack(config), {
   // The delay between a change being detected and the restart
   // of the bundle compilation process
   watchDelay: 200,
-  // Should the rebuilt files be written to memory whenever
-  // the compilation process completes. If true, this reduces
-  // the overhead of background compilation
+  // Reduces the overhead of background compilation by forcing
+  // the compiler to write to an in-memory filesystem.
   useMemoryFS: true
 });
 ```
