@@ -68,9 +68,9 @@ Configuration
 -------------
 
 ```javascript
-// defaults
-
 var watcher = new WebpackWatcher(webpack(config), {
+  // Defaults
+  // --------
   // Indicates that your source files should be watched for changes
   watch: true,
   // The delay between a change being detected and the restart
