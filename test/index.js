@@ -349,6 +349,40 @@ describe('WebpackWatcher', function() {
       });
     });
   });
+  it('writeAssets will create a dir path to a filename', function(done) {
+    var entry = path.join(TEST_OUTPUT_DIR, 'write_assets_mkdirp', 'entry.js');
+    var output = path.join(TEST_OUTPUT_DIR, 'write_assets_mkdirp', 'nested_dir', 'and_another', 'output.js');
+
+    var compiler = webpack({
+      context: path.dirname(entry),
+      entry: './' + path.basename(entry),
+      output: {
+        path: path.dirname(output),
+        filename: path.basename(output)
+      }
+    });
+
+    var watcher = new WebpackWatcher(compiler);
+
+    mkdirp.sync(path.dirname(entry));
+    fs.writeFileSync(entry, 'module.exports = "__ASYNC_WRITE_FILE_TEST_ONE__";');
+
+    watcher.onceDone(function(err, stats) {
+      assert.isNull(err);
+      assert.isObject(stats);
+      assert.equal(output, stats.compilation.assets['output.js'].existsAt);
+      watcher.writeAssets(function(err, filenames) {
+        assert.isNull(err);
+        assert.isArray(filenames);
+        assert.equal(filenames.length, 1);
+        assert.equal(filenames[0], output);
+        var contents = fs.readFileSync(output);
+        assert.include(contents.toString(), '__ASYNC_WRITE_FILE_TEST_ONE__');
+        fs.writeFileSync(entry, 'module.exports = "__ASYNC_WRITE_FILE_TEST_TWO__";');
+        done();
+      });
+    });
+  });
   it('provides a way to invalidate the watcher', function(done) {
     var entry = path.join(TEST_OUTPUT_DIR, 'watcher_invalidate', 'entry.js');
     var output = path.join(TEST_OUTPUT_DIR, 'watcher_invalidate', 'output.js');
