@@ -15,7 +15,6 @@ Basic usage
 -----------
 
 ```javascript
-var fs = require('fs');
 var webpack = require('webpack');
 var WebpackWatcher = require('webpack-watcher');
 var config = require('./path/to/your/webpack.config');
