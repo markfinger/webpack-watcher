@@ -1,3 +1,7 @@
+**Deprecated**
+
+The codebase has been merged with [https://github.com/markfinger/webpack-build].
+
 webpack-watcher
 ===============
 
